@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 import '../services/supabase_service.dart';
+import '../utils/ios_helpers.dart';
 import 'otp_verification_screen.dart';
 import 'password_screen.dart';
 
@@ -111,7 +112,7 @@ class _EmailInputScreenState extends State<EmailInputScreen> {
       if (!mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(
+        adaptivePageRoute(
           builder: (context) => OtpVerificationScreen(
             email: email,
           ),
@@ -148,7 +149,7 @@ class _EmailInputScreenState extends State<EmailInputScreen> {
   void _proceedToPassword() {
     Navigator.push(
       context,
-      MaterialPageRoute(
+      adaptivePageRoute(
         builder: (context) => PasswordScreen(
           email: _emailController.text.trim(),
         ),

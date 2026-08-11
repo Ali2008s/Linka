@@ -10,6 +10,7 @@ import 'email_input_screen.dart';
 import 'home_screen.dart';
 import 'create_password_screen.dart';
 import 'forgot_password_screen.dart';
+import '../utils/ios_helpers.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -143,14 +144,14 @@ class _LoginScreenState extends State<LoginScreen> {
           profile['username'] != null) {
         // Existing user with profile -> go to Home
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          adaptivePageRoute(builder: (_) => const HomeScreen()),
           (route) => false,
         );
       } else {
         // New Google user -> setup password then profile
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
+          adaptivePageRoute(
             builder: (_) => const CreatePasswordScreen(isFromGoogle: true),
           ),
         );
@@ -194,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (SupabaseService.isLoggedIn) {
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          adaptivePageRoute(builder: (_) => const HomeScreen()),
           (route) => false,
         );
       } else {
@@ -521,10 +522,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(color: AppColors.cardBorder),
                         ),
-                        child: const Icon(
-                          Icons.fingerprint_rounded,
+                        child: Icon(
+                          getBiometricIcon(),
                           color: AppColors.primaryOrange,
-                          size: 28,
+                          size: 26,
                         ),
                       ),
                     ),

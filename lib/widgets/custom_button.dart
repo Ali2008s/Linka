@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../utils/ios_helpers.dart';
 
 enum CustomButtonType { primary, secondary }
 
@@ -42,7 +43,12 @@ class CustomButton extends StatelessWidget {
       width: double.infinity,
       height: height,
       child: ElevatedButton(
-        onPressed: isEnabled ? onPressed : null,
+        onPressed: isEnabled
+            ? () {
+                hapticLight();
+                onPressed?.call();
+              }
+            : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
           disabledBackgroundColor: type == CustomButtonType.primary ? AppColors.buttonDisabled : AppColors.buttonDark.withValues(alpha: 0.5),
@@ -54,15 +60,9 @@ class CustomButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
         ),
         child: isLoading
-            ? SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    type == CustomButtonType.primary ? Colors.white : AppColors.primaryOrange,
-                  ),
-                ),
+            ? adaptiveProgressIndicator(
+                color: type == CustomButtonType.primary ? Colors.white : AppColors.primaryOrange,
+                size: 22,
               )
             : Text(
                 text,
@@ -76,3 +76,4 @@ class CustomButton extends StatelessWidget {
     );
   }
 }
+

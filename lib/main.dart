@@ -3,14 +3,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/home_screen.dart';
+import 'utils/ios_helpers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  setLightStatusBar();
 
   await Supabase.initialize(
     url: 'https://uzkqpzqrzoofwgmrxqib.supabase.co',
-    publishableKey:
-        'sb_publishable_0ZFzFmG4JzYHraGCvO_nTg_NB_MM7Qw',
+    publishableKey: 'sb_publishable_0ZFzFmG4JzYHraGCvO_nTg_NB_MM7Qw',
   );
 
   runApp(const SubstackAuthApp());
@@ -29,7 +30,9 @@ class SubstackAuthApp extends StatelessWidget {
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: child ?? const SizedBox(),
+          child: BoundedTextScaler(
+            child: child ?? const SizedBox(),
+          ),
         );
       },
       home: session != null ? const HomeScreen() : const WelcomeScreen(),

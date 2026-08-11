@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/otp_input_field.dart';
 import '../services/supabase_service.dart';
+import '../utils/ios_helpers.dart';
 import 'create_password_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -63,7 +64,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
+        adaptivePageRoute(
           builder: (_) => const CreatePasswordScreen(),
         ),
       );

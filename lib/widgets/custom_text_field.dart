@@ -11,6 +11,7 @@ class CustomTextField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final bool autoFocus;
+  final Iterable<String>? autofillHints;
 
   const CustomTextField({
     super.key,
@@ -22,6 +23,7 @@ class CustomTextField extends StatefulWidget {
     this.onChanged,
     this.onSubmitted,
     this.autoFocus = false,
+    this.autofillHints,
   });
 
   @override
@@ -50,6 +52,13 @@ class _CustomTextFieldState extends State<CustomTextField> {
             controller: widget.controller,
             autofocus: widget.autoFocus,
             keyboardType: widget.keyboardType,
+            keyboardAppearance: Brightness.dark,
+            autofillHints: widget.autofillHints ??
+                (widget.isPassword
+                    ? [AutofillHints.password]
+                    : (widget.keyboardType == TextInputType.emailAddress
+                        ? [AutofillHints.email]
+                        : null)),
             obscureText: widget.isPassword ? _obscureText : false,
             onChanged: widget.onChanged,
             onSubmitted: widget.onSubmitted,

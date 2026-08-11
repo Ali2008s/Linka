@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -64,7 +65,14 @@ class AppTheme {
         surface: AppColors.surfaceDark,
         onSurface: AppColors.textPrimary,
       ),
+      cupertinoOverrideTheme: const CupertinoThemeData(
+        brightness: Brightness.dark,
+        primaryColor: AppColors.primaryOrange,
+        scaffoldBackgroundColor: AppColors.background,
+        barBackgroundColor: AppColors.surfaceDark,
+      ),
       textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme),
     );
   }
 }
+

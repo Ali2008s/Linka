@@ -13,6 +13,7 @@ class PremiumTextField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final bool autoFocus;
+  final Iterable<String>? autofillHints;
 
   const PremiumTextField({
     super.key,
@@ -26,6 +27,7 @@ class PremiumTextField extends StatefulWidget {
     this.onChanged,
     this.onSubmitted,
     this.autoFocus = false,
+    this.autofillHints,
   });
 
   @override
@@ -105,6 +107,13 @@ class _PremiumTextFieldState extends State<PremiumTextField> {
                   focusNode: _focusNode,
                   autofocus: widget.autoFocus,
                   keyboardType: widget.keyboardType,
+                  keyboardAppearance: Brightness.dark,
+                  autofillHints: widget.autofillHints ??
+                      (widget.isPassword
+                          ? [AutofillHints.password]
+                          : (widget.keyboardType == TextInputType.emailAddress
+                              ? [AutofillHints.email]
+                              : null)),
                   obscureText: widget.isPassword ? _obscureText : false,
                   onChanged: widget.onChanged,
                   onSubmitted: widget.onSubmitted,

@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/illustration_grid.dart';
+import '../utils/ios_helpers.dart';
 import 'email_input_screen.dart';
 import 'login_screen.dart';
 
@@ -20,7 +21,9 @@ class WelcomeScreen extends StatelessWidget {
             final isSmall = availableHeight < 600;
 
             return SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: availableHeight),
                 child: Padding(
@@ -84,7 +87,7 @@ class WelcomeScreen extends StatelessWidget {
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(
+                                adaptivePageRoute(
                                   builder: (context) => const EmailInputScreen(isSignUp: true),
                                 ),
                               );
@@ -97,7 +100,7 @@ class WelcomeScreen extends StatelessWidget {
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(
+                                adaptivePageRoute(
                                   builder: (context) => const LoginScreen(),
                                 ),
                               );
