@@ -4,11 +4,13 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 import '../services/supabase_service.dart';
+import '../services/biometric_service.dart';
 import 'profile_setup_screen.dart';
 
 class CreatePasswordScreen extends StatefulWidget {
   final bool isFromGoogle;
-  const CreatePasswordScreen({super.key, this.isFromGoogle = false});
+  final String? email; // البريد الإلكتروني المستخدم للتسجيل
+  const CreatePasswordScreen({super.key, this.isFromGoogle = false, this.email});
 
   @override
   State<CreatePasswordScreen> createState() => _CreatePasswordScreenState();
@@ -59,9 +61,26 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
     try {
       await SupabaseService.updatePassword(password);
       if (!mounted) return;
+
+      // عرض نافذة تفعيل البصمة إذا كان الإيميل متوفراً
+      final userEmail = widget.email ?? SupabaseService.currentUser?.email ?? '';
+      if (userEmail.isNotEmpty) {
+        await BiometricService.promptEnableBiometric(
+          context,
+          email: userEmail,
+          password: password,
+        );
+      }
+
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+        MaterialPageRoute(
+          builder: (_) => ProfileSetupScreen(
+            email: userEmail,
+            password: password,
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;

@@ -6,11 +6,18 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 import '../services/supabase_service.dart';
+import '../services/biometric_service.dart';
 import '../services/telegram_upload_service.dart';
 import 'home_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({super.key});
+  final String email;
+  final String password;
+  const ProfileSetupScreen({
+    super.key,
+    this.email = '',
+    this.password = '',
+  });
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -91,6 +98,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         username: _usernameController.text.trim().toLowerCase(),
         avatarUrl: avatarUrl,
       );
+      if (!mounted) return;
+
+      // عرض نافذة تفعيل البصمة إذا لم تكن مفعلة بعد
+      final email = widget.email.isNotEmpty
+          ? widget.email
+          : (SupabaseService.currentUser?.email ?? '');
+      final password = widget.password;
+
+      if (email.isNotEmpty && password.isNotEmpty) {
+        await BiometricService.promptEnableBiometric(
+          context,
+          email: email,
+          password: password,
+        );
+      }
+
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomeScreen()),

@@ -65,7 +65,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       Navigator.pushReplacement(
         context,
         adaptivePageRoute(
-          builder: (_) => const CreatePasswordScreen(),
+          builder: (_) => CreatePasswordScreen(email: widget.email),
         ),
       );
     } catch (e) {

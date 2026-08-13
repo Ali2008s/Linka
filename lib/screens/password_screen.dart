@@ -3,6 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
+import '../services/supabase_service.dart';
+import '../services/biometric_service.dart';
+import '../utils/ios_helpers.dart';
+import 'home_screen.dart';
+import 'forgot_password_screen.dart';
 
 class PasswordScreen extends StatefulWidget {
   final String email;
@@ -29,27 +34,41 @@ class _PasswordScreenState extends State<PasswordScreen> {
   void _handleLogin() async {
     if (_passwordController.text.isEmpty) return;
 
+    final password = _passwordController.text;
+
     setState(() {
       _isLoading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      await SupabaseService.signInWithEmailAndPassword(
+        widget.email,
+        password,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
+      // سؤال المستخدم لتفعيل البصمة
+      await BiometricService.promptEnableBiometric(
+        context,
+        email: widget.email,
+        password: password,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.surfaceDark,
-        content: Text(
-          'تم تسجيل الدخول بنجاح!',
-          style: GoogleFonts.cairo(color: AppColors.textPrimary),
-        ),
-      ),
-    );
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        adaptivePageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      showAdaptiveSnackBar(
+        context,
+        message: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى',
+        isError: true,
+      );
+    }
   }
 
   @override
@@ -124,7 +143,14 @@ class _PasswordScreenState extends State<PasswordScreen> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ForgotPasswordScreen(),
+                      ),
+                    );
+                  },
                   child: Text(
                     'نسيت كلمة المرور؟',
                     style: GoogleFonts.cairo(

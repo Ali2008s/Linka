@@ -90,39 +90,37 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     if (!_validateForm()) return;
 
+    final email = _emailOrPhoneController.text.trim();
+    final password = _passwordController.text;
+
     setState(() => _isLoading = true);
 
     try {
       await SupabaseService.signInWithEmailAndPassword(
-        _emailOrPhoneController.text.trim(),
-        _passwordController.text,
+        email,
+        password,
       );
       if (!mounted) return;
+
+      // سؤال المستخدم لتفعيل البصمة أو تحديث الاعتماد
+      await BiometricService.promptEnableBiometric(
+        context,
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        adaptivePageRoute(builder: (_) => const HomeScreen()),
         (route) => false,
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'البريد الإلكتروني أو كلمة المرور غير صحيحة',
-                  style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-        ),
+      showAdaptiveSnackBar(
+        context,
+        message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+        isError: true,
       );
     }
   }
@@ -159,55 +157,77 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: Text(
-            'حدث خطأ أثناء الدخول بـ Google',
-            style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-        ),
+      showAdaptiveSnackBar(
+        context,
+        message: 'حدث خطأ أثناء الدخول بـ Google',
+        isError: true,
       );
     }
   }
 
   void _handleBiometricLogin() async {
-
     final available = await BiometricService.isBiometricAvailable();
     if (!available) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.surfaceDark,
-          content: Text(
-            'البصمة غير مدعومة أو غير مفعلة على هذا الجهاز',
-            style: GoogleFonts.cairo(color: AppColors.textPrimary),
-          ),
-        ),
+      showAdaptiveSnackBar(
+        context,
+        message: 'البصمة غير مدعومة أو غير مفعلة على هذا الجهاز',
+        isError: true,
       );
       return;
     }
 
-    final authenticated = await BiometricService.authenticate();
+    final hasCreds = await BiometricService.hasSavedCredentials();
+    if (!hasCreds) {
+      if (!mounted) return;
+      showAdaptiveSnackBar(
+        context,
+        message: 'لم يتم تفعيل البصمة لهذا الحساب بعد. يرجى تسجيل الدخول بالإيميل وكلمة المرور لتفعيلها.',
+        isError: true,
+      );
+      return;
+    }
+
+    final authenticated = await BiometricService.authenticate(
+      localizedReason: 'إثبات الهوية لتسجيل الدخول السريع',
+    );
+
     if (authenticated) {
-      if (SupabaseService.isLoggedIn) {
+      if (!mounted) return;
+      setState(() => _isLoading = true);
+
+      try {
+        final creds = await BiometricService.getSavedCredentials();
+        if (creds != null) {
+          await SupabaseService.signInWithEmailAndPassword(
+            creds['email']!,
+            creds['password']!,
+          );
+          if (!mounted) return;
+          showAdaptiveSnackBar(
+            context,
+            message: 'تم تسجيل الدخول بالبصمة بنجاح! 👋',
+          );
+          Navigator.of(context).pushAndRemoveUntil(
+            adaptivePageRoute(builder: (_) => const HomeScreen()),
+            (route) => false,
+          );
+        } else {
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+          showAdaptiveSnackBar(
+            context,
+            message: 'تعذر العثور على بيانات الاعتماد، يرجى كتابة كلمة المرور لتحديدها.',
+            isError: true,
+          );
+        }
+      } catch (e) {
         if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          adaptivePageRoute(builder: (_) => const HomeScreen()),
-          (route) => false,
-        );
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.surfaceDark,
-            content: Text(
-              'تم التحقق بالبصمة بنجاح! يرجى الدخول بكلمة المرور لتأكيد الحساب.',
-              style: GoogleFonts.cairo(color: AppColors.textPrimary),
-            ),
-          ),
+        setState(() => _isLoading = false);
+        showAdaptiveSnackBar(
+          context,
+          message: 'حدث خطأ أثناء تسجيل الدخول بالبصمة. يرجى الدخول بكلمة المرور.',
+          isError: true,
         );
       }
     }
