@@ -12,7 +12,6 @@ import 'create_password_screen.dart';
 import 'forgot_password_screen.dart';
 import '../utils/ios_helpers.dart';
 
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -24,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   int _selectedTab = 0; // 0 for Email, 1 for Phone
   final TextEditingController _emailOrPhoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
+
   bool _isLoading = false;
   String? _emailOrPhoneError;
   String? _passwordError;
@@ -65,7 +64,8 @@ class _LoginScreenState extends State<LoginScreen> {
             : 'يرجى إدخال رقم الهاتف';
       });
       isValid = false;
-    } else if (_selectedTab == 0 && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(text)) {
+    } else if (_selectedTab == 0 &&
+        !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(text)) {
       setState(() {
         _emailOrPhoneError = 'البريد الإلكتروني غير صحيح';
       });
@@ -96,10 +96,17 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await SupabaseService.signInWithEmailAndPassword(
-        email,
-        password,
-      );
+      await SupabaseService.signInWithEmailAndPassword(email, password);
+      if (!mounted) return;
+
+      // جلب بيانات الملف الشخصي لاستخدامها في البصمة
+      final profile = await SupabaseService.getProfile();
+      final displayName =
+          profile?['full_name'] as String? ??
+          profile?['username'] as String? ??
+          email.split('@').first;
+      final avatarUrl = profile?['avatar_url'] as String?;
+
       if (!mounted) return;
 
       // سؤال المستخدم لتفعيل البصمة أو تحديث الاعتماد
@@ -107,6 +114,8 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
         email: email,
         password: password,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
       );
 
       if (!mounted) return;
@@ -177,19 +186,34 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final hasCreds = await BiometricService.hasSavedCredentials();
-    if (!hasCreds) {
+    final accounts = await BiometricService.getSavedAccounts();
+    if (accounts.isEmpty) {
       if (!mounted) return;
       showAdaptiveSnackBar(
         context,
-        message: 'لم يتم تفعيل البصمة لهذا الحساب بعد. يرجى تسجيل الدخول بالإيميل وكلمة المرور لتفعيلها.',
+        message:
+            'لم يتم تفعيل البصمة لأي حساب بعد. يرجى تسجيل الدخول بالإيميل وكلمة المرور لتفعيلها.',
         isError: true,
       );
       return;
     }
 
+    SavedBiometricAccount? selectedAccount;
+
+    if (accounts.length == 1) {
+      selectedAccount = accounts.first;
+    } else {
+      // أكثر من حساب محفوظ -> عرض قائمة اختيار الحساب
+      selectedAccount = await BiometricService.showAccountPicker(
+        context,
+        accounts,
+      );
+      if (selectedAccount == null) return; // المستخدم ألغى الاختيار
+    }
+
     final authenticated = await BiometricService.authenticate(
-      localizedReason: 'إثبات الهوية لتسجيل الدخول السريع',
+      localizedReason:
+          'إثبات الهوية للدخول بالحساب: ${selectedAccount.displayName}',
     );
 
     if (authenticated) {
@@ -197,36 +221,27 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = true);
 
       try {
-        final creds = await BiometricService.getSavedCredentials();
-        if (creds != null) {
-          await SupabaseService.signInWithEmailAndPassword(
-            creds['email']!,
-            creds['password']!,
-          );
-          if (!mounted) return;
-          showAdaptiveSnackBar(
-            context,
-            message: 'تم تسجيل الدخول بالبصمة بنجاح! 👋',
-          );
-          Navigator.of(context).pushAndRemoveUntil(
-            adaptivePageRoute(builder: (_) => const HomeScreen()),
-            (route) => false,
-          );
-        } else {
-          if (!mounted) return;
-          setState(() => _isLoading = false);
-          showAdaptiveSnackBar(
-            context,
-            message: 'تعذر العثور على بيانات الاعتماد، يرجى كتابة كلمة المرور لتحديدها.',
-            isError: true,
-          );
-        }
+        await SupabaseService.signInWithEmailAndPassword(
+          selectedAccount.email,
+          selectedAccount.password,
+        );
+        if (!mounted) return;
+        showAdaptiveSnackBar(
+          context,
+          message:
+              'مرحباً بك ${selectedAccount.displayName}! تم تسجيل الدخول بنجاح 👋',
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          adaptivePageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
       } catch (e) {
         if (!mounted) return;
         setState(() => _isLoading = false);
         showAdaptiveSnackBar(
           context,
-          message: 'حدث خطأ أثناء تسجيل الدخول بالبصمة. يرجى الدخول بكلمة المرور.',
+          message:
+              'حدث خطأ أثناء تسجيل الدخول بالحساب المختار. يرجى الدخول بكلمة المرور.',
           isError: true,
         );
       }
@@ -235,7 +250,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -243,7 +257,10 @@ class _LoginScreenState extends State<LoginScreen> {
           onTap: () => FocusScope.of(context).unfocus(),
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 12.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -260,7 +277,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.surfaceDark,
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.cardBorder, width: 1),
+                          border: Border.all(
+                            color: AppColors.cardBorder,
+                            width: 1,
+                          ),
                         ),
                         child: const Icon(
                           Icons.close_rounded,
@@ -270,16 +290,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceDark,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.cardBorder, width: 1),
+                        border: Border.all(
+                          color: AppColors.cardBorder,
+                          width: 1,
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.language_rounded, color: AppColors.textSecondary, size: 16),
+                          const Icon(
+                            Icons.language_rounded,
+                            color: AppColors.textSecondary,
+                            size: 16,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'العربية',
@@ -290,7 +320,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(width: 2),
-                          const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary, size: 18),
+                          const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: AppColors.textSecondary,
+                            size: 18,
+                          ),
                         ],
                       ),
                     ),
@@ -369,13 +403,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.cardFill,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.cardBorder, width: 1),
+                          border: Border.all(
+                            color: AppColors.cardBorder,
+                            width: 1,
+                          ),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _selectedCountryCode,
                             dropdownColor: AppColors.surfaceDark,
-                            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary, size: 20),
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: AppColors.textSecondary,
+                              size: 20,
+                            ),
                             items: _countryCodes.map((code) {
                               return DropdownMenuItem<String>(
                                 value: code,
@@ -465,7 +506,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       );
                     },
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 4,
+                      ),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
@@ -508,7 +552,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   height: 22,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
                                   ),
                                 )
                               : Row(
@@ -523,7 +569,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                                    const Icon(
+                                      Icons.arrow_back_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
                                   ],
                                 ),
                         ),
@@ -554,11 +604,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 16),
 
-
                 // 6. Social Authentication Divider
                 Row(
                   children: [
-                    const Expanded(child: Divider(color: AppColors.cardBorder, thickness: 1)),
+                    const Expanded(
+                      child: Divider(color: AppColors.cardBorder, thickness: 1),
+                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
@@ -570,7 +621,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const Expanded(child: Divider(color: AppColors.cardBorder, thickness: 1)),
+                    const Expanded(
+                      child: Divider(color: AppColors.cardBorder, thickness: 1),
+                    ),
                   ],
                 ),
 
@@ -591,7 +644,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const EmailInputScreen(isSignUp: true),
+                          builder: (context) =>
+                              const EmailInputScreen(isSignUp: true),
                         ),
                       );
                     },
