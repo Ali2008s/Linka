@@ -204,6 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
       selectedAccount = accounts.first;
     } else {
       // أكثر من حساب محفوظ -> عرض قائمة اختيار الحساب
+      if (!mounted) return;
       selectedAccount = await BiometricService.showAccountPicker(
         context,
         accounts,
